@@ -1,13 +1,17 @@
 # Multimodal RAG: PDF Processing & Information Extraction
 
-A comprehensive Retrieval-Augmented Generation (RAG) system for processing PDF documents with text and images, extracting structured information, and enabling intelligent question-answering.
+A comprehensive Retrieval-Augmented Generation (RAG) system for processing PDF documents with text and images, extracting structured information (especially Vietnamese telco packages), and enabling intelligent question-answering.
+
+**Current Phase:** Image RAG Service API for telecom package extraction with MySQL storage.
 ## 📋 Table of Contents
 
 - [Installation](#installation)
 - [Configuration](#configuration)
+- [Database Setup](#database-setup)
 - [Quick Start](#quick-start)
 - [Usage](#usage)
   - [CLI Interface](#cli-interface)
+  - [API Service](#api-service)
 - [Architecture](#architecture)
 - [API Keys](#api-keys)
 
@@ -42,6 +46,33 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+## 🗄️ Database Setup
+
+This system uses **MySQL** for storing extracted package information and customer data.
+
+### Quick Setup
+
+```powershell
+# 1. Install MySQL 8.0+ (if not already installed)
+# Download from: https://dev.mysql.com/downloads/installer/
+
+# 2. Create database using provided schema
+mysql -u root -p < schema.sql
+
+# 3. Configure environment variables in .env
+MYSQL_USER=root
+MYSQL_PASSWORD=your_password
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_DATABASE=telco_db
+
+# 4. Test connection
+cd src
+python database.py
+```
+
+**Detailed guide:** See [MYSQL_SETUP.md](MYSQL_SETUP.md) for complete setup instructions, troubleshooting, and migration from MongoDB.
+
 ## ⚙️ Configuration
 
 ### 1. Create Environment File
@@ -55,6 +86,13 @@ cp .env.example .env
 ### 2. Edit `.env` File
 
 ```env
+# MySQL Database Configuration
+MYSQL_USER=root
+MYSQL_PASSWORD=your_mysql_password
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_DATABASE=telco_db
+
 # Required API Keys
 OPENAI_API_KEY=your_openai_api_key_here
 GOOGLE_API_KEY=your_google_api_key_here
@@ -71,7 +109,12 @@ LANGCHAIN_PROJECT=multimodal-rag
 # Model Settings
 EMBEDDING_MODEL=text-embedding-3-small
 LLM_MODEL=gpt-4o
-VISION_MODEL=gemini-1.5-flash-8b
+VISION_MODEL=gemini-2.0-flash
+
+# Local Model Settings (for offline usage)
+LOCAL_EMBEDDINGS=true
+LOCAL_LLM=true
+LOCAL_LLM_MODEL=google/flan-t5-base
 ```
 
 ## 🎯 Quick Start
@@ -97,13 +140,45 @@ python main.py interactive
 
 ## 📖 Usage
 
+### API Service (Package Extraction)
+
+Start the FastAPI service for Vietnamese telco package extraction:
+
+```powershell
+cd src
+python api_service.py
+```
+
+Service runs on **http://localhost:8001**
+
+#### API Endpoints
+
+- `GET /` - Service info
+- `GET /health` - Health check
+- `POST /extract-packages` - Extract packages from single PDF
+- `POST /extract-packages-batch` - Extract from multiple PDFs
+
+**Example usage:**
+
+```powershell
+# Test with cURL
+curl -X POST http://localhost:8001/extract-packages `
+  -F "file=@../data/raw/viettel_packages.pdf"
+
+# Interactive docs
+# Open browser: http://localhost:8001/docs
+```
+
+**Detailed API documentation:** See [API_SERVICE_README.md](API_SERVICE_README.md)
+
 ### CLI Interface
 
-The application provides several commands:
+The application also provides CLI commands:
 
 #### Process a PDF Document
 
 ```bash
+cd src
 python main.py process <pdf_path> [--no-upstage] [--no-structured]
 ```
 
@@ -131,11 +206,20 @@ Commands in interactive mode:
 - `clear` - Clear chat history
 - `quit` or `exit` - Exit interactive mode
 
-#### Load Existing Vector Store
+#### Content Management
 
 ```bash
-python main.py load
+# List saved extracted content
+python main.py list
+
+# Show specific extraction
+python main.py show <pdf_name>
+
+# Regenerate from saved content
+python main.py regenerate <saved_file>
 ```
+
+**Content management guide:** See [CONTENT_MANAGEMENT.md](CONTENT_MANAGEMENT.md)
 
 ## 🏗️ Architecture
 
@@ -147,12 +231,13 @@ python main.py load
          ▼
 ┌─────────────────────────────────────────┐
 │  Text Extraction (PyMuPDF4LLM)         │
-│  Image Extraction (Upstage/Unstructured)│
+│  Image Extraction (Upstage/Local BLIP) │
 └────────┬────────────────────────────────┘
          │
          ▼
 ┌─────────────────────────────────────────┐
-│  Image Description (Gemini Vision)      │
+│  Image Description (3-tier fallback):   │
+│  Upstage → Gemini Vision → Local BLIP  │
 └────────┬────────────────────────────────┘
          │
          ▼
@@ -160,19 +245,29 @@ python main.py load
 │  Document Merger (by page)              │
 └────────┬────────────────────────────────┘
          │
-         ├──────────────────┬──────────────────┐
-         ▼                  ▼                  ▼
-┌────────────────┐  ┌──────────────┐  ┌────────────────┐
-│ Vector Store   │  │ Structured   │  │  RAG Pipeline  │
-│ (ChromaDB)     │  │ Extraction   │  │  (LangGraph)   │
-└────────────────┘  └──────────────┘  └────────────────┘
-         │                  │                  │
-         ▼                  ▼                  ▼
-┌────────────────┐  ┌──────────────┐  ┌────────────────┐
-│ Similarity     │  │ JSON/CSV     │  │ Q&A Interface  │
-│ Search         │  │ Export       │  │                │
-└────────────────┘  └──────────────┘  └────────────────┘
+         ├──────────────────┬──────────────────┬──────────────────┐
+         ▼                  ▼                  ▼                  ▼
+┌────────────────┐  ┌──────────────┐  ┌────────────────┐  ┌────────────────┐
+│ Vector Store   │  │ Package      │  │  RAG Pipeline  │  │  FastAPI       │
+│ (ChromaDB)     │  │ Extraction   │  │  (LangGraph)   │  │  Service       │
+└────────────────┘  └──────────────┘  └────────────────┘  └────────────────┘
+         │                  │                  │                  │
+         ▼                  ▼                  ▼                  ▼
+┌────────────────┐  ┌──────────────┐  ┌────────────────┐  ┌────────────────┐
+│ Similarity     │  │ MySQL        │  │ Q&A Interface  │  │ REST API       │
+│ Search         │  │ Database     │  │                │  │ (Port 8001)    │
+└────────────────┘  └──────────────┘  └────────────────┘  └────────────────┘
 ```
+
+### Key Features
+
+- **Multi-modal Processing**: Extracts both text and images from PDFs
+- **Local Model Support**: Can run offline with local embeddings, LLM, and vision models
+- **Vietnamese Telco Packages**: Specialized extraction for Vietnamese telecommunication package information
+- **MySQL Storage**: Structured data storage with JSON columns for dynamic metadata
+- **RESTful API**: FastAPI service for package extraction
+- **Content Management**: Save and regenerate extracted content without reprocessing
+- **RAG Pipeline**: Intelligent question-answering with source citations
 ## 🔑 API Keys
 
 ### Required Keys
@@ -194,34 +289,60 @@ python main.py load
 ## 📝 Project Structure
 
 ```
-multimodal rag/
+multimodal-rag/
 ├── config/
-│   └── settings.py          # Configuration management
+│   └── settings.py              # Configuration management
 ├── src/
 │   ├── __init__.py
-│   ├── main.py              # Main application
-│   ├── pdf_processor.py     # PDF text extraction
-│   ├── image_processor.py   # Image extraction & description
-│   ├── document_merger.py   # Document merging
-│   ├── vector_store.py      # Vector store management
-│   ├── structured_extractor.py  # Smart ETL
-│   └── rag_pipeline.py      # RAG implementation
+│   ├── main.py                  # CLI application
+│   ├── api_service.py           # FastAPI REST service (Port 8001)
+│   ├── database.py              # MySQL ORM models & connection
+│   ├── pdf_processor.py         # PDF text extraction
+│   ├── image_processor.py       # Image extraction & description (3-tier)
+│   ├── document_merger.py       # Document merging
+│   ├── vector_store.py          # Vector store management
+│   ├── structured_extractor.py  # General structured extraction
+│   ├── package_extractor.py     # Telco package extraction
+│   ├── content_manager.py       # Content save/load/regenerate
+│   └── rag_pipeline.py          # RAG implementation
 ├── data/
-│   ├── raw/                 # Input PDF files
-│   ├── processed/           # Intermediate data
-│   └── structured/          # Extracted structured data
-├── vectorstore/             # ChromaDB storage
-├── requirements.txt         # Dependencies
-├── .env.example            # Environment template
-├── .gitignore
-└── README.md               # This file
+│   ├── raw/                     # Input PDF files
+│   ├── processed/               # Extracted content (JSON + txt)
+│   └── structured/              # CSV exports
+├── vectorstore/                 # ChromaDB storage
+├── schema.sql                   # MySQL database schema
+├── data.md                      # Database entity documentation
+├── requirements.txt             # Python dependencies
+├── .env.example                 # Environment template
+├── README.md                    # This file
+├── MYSQL_SETUP.md              # Database setup guide
+├── API_SERVICE_README.md        # API documentation
+└── CONTENT_MANAGEMENT.md        # Content management guide
 ```
 
-Technologies used:
-- [LangChain](https://www.langchain.com/)
-- [PyMuPDF4LLM](https://pymupdf.readthedocs.io/)
-- [Upstage Document AI](https://www.upstage.ai/)
-- [ChromaDB](https://www.trychroma.com/)
-- [OpenAI](https://openai.com/)
-- [Google Gemini](https://deepmind.google/technologies/gemini/)
+## 🛠️ Technologies
+
+### Core Stack
+- **Python 3.13+**
+- **MySQL 8.0+** - Relational database with JSON column support
+- **FastAPI** - Modern web framework for API service
+- **SQLAlchemy** - ORM for database operations
+
+### AI/ML Libraries
+- [LangChain](https://www.langchain.com/) - LLM orchestration framework
+- [PyMuPDF4LLM](https://pymupdf.readthedocs.io/) - PDF text extraction
+- [ChromaDB](https://www.trychroma.com/) - Vector database
+- [Transformers](https://huggingface.co/transformers/) - Local models
+- [Sentence-Transformers](https://www.sbert.net/) - Local embeddings
+
+### AI Models
+- **Embeddings**: OpenAI text-embedding-3-small OR sentence-transformers/all-MiniLM-L6-v2 (local)
+- **LLM**: OpenAI gpt-4o OR google/flan-t5-base (local)
+- **Vision**: Upstage Document Parse OR Google Gemini OR Salesforce/blip-image-captioning-base (local)
+
+### External Services (Optional)
+- [Upstage Document AI](https://www.upstage.ai/) - Advanced document parsing
+- [OpenAI](https://openai.com/) - GPT models
+- [Google Gemini](https://deepmind.google/technologies/gemini/) - Vision models
+- [LangSmith](https://smith.langchain.com/) - Tracing & monitoring
 

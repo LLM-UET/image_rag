@@ -142,13 +142,17 @@ Context: {context}"""),
         )
         
         # Create messages
-        messages = self.qa_prompt.invoke({
-            "question": state["question"],
-            "context": docs_content
-        })
+        messages = self.qa_prompt.format_messages(
+            question=state["question"],
+            context=docs_content
+        )
         
-        # Generate response
-        response = self.llm.invoke(messages)
+        # Generate response - handle local vs remote LLM
+        if hasattr(self.llm, 'pipe'):  # LocalLLM
+            prompt_text = "\n\n".join([m.content for m in messages])
+            response = self.llm.invoke(prompt_text)
+        else:
+            response = self.llm.invoke(messages)
         
         logger.info("Answer generated")
         return {"answer": response.content}

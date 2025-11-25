@@ -207,27 +207,21 @@ Return as a JSON array of objects."""),
 
         for i, doc in enumerate(docs_to_process):
             try:
-                prompt_messages = self.extraction_prompt.invoke({
-                    "content": doc.page_content,
-                    "format_instructions": self.parser.get_format_instructions()
-                })
+                # Format prompt with variables
+                prompt_messages = self.extraction_prompt.format_messages(
+                    content=doc.page_content,
+                    format_instructions=self.parser.get_format_instructions()
+                )
 
-                # Extract content from message objects properly
-                if isinstance(prompt_messages, (list, tuple)):
-                    # Extract .content from each message object if available
-                    parts = []
-                    for m in prompt_messages:
-                        if hasattr(m, 'content'):
-                            parts.append(m.content)
-                        else:
-                            parts.append(str(m))
-                    prompt_text = "\n".join(parts)
-                elif hasattr(prompt_messages, 'content'):
-                    prompt_text = prompt_messages.content
+                # For LocalLLM, we need to pass the messages directly or convert to text
+                # Check if LLM expects messages or text
+                if hasattr(self.llm, 'pipe'):  # LocalLLM case
+                    # Convert messages to plain text for local model
+                    prompt_text = "\n\n".join([m.content for m in prompt_messages])
+                    response = self.llm.invoke(prompt_text)
                 else:
-                    prompt_text = str(prompt_messages)
-
-                response = self.llm.invoke(prompt_text)
+                    # For real ChatOpenAI, pass messages directly
+                    response = self.llm.invoke(prompt_messages)
                 out_text = response.content
 
                 # Robust parse attempts
@@ -300,23 +294,15 @@ Return as a JSON array of objects."""),
         """
         # Manual flow for entity extraction to support local LLM
         try:
-            messages = self.entity_prompt.invoke({"content": text})
+            # Format messages properly
+            messages = self.entity_prompt.format_messages(content=text)
             
-            # Extract content from message objects properly
-            if isinstance(messages, (list, tuple)):
-                parts = []
-                for m in messages:
-                    if hasattr(m, 'content'):
-                        parts.append(m.content)
-                    else:
-                        parts.append(str(m))
-                prompt_text = "\n".join(parts)
-            elif hasattr(messages, 'content'):
-                prompt_text = messages.content
+            # Check if local LLM or remote
+            if hasattr(self.llm, 'pipe'):  # LocalLLM
+                prompt_text = "\n\n".join([m.content for m in messages])
+                response = self.llm.invoke(prompt_text)
             else:
-                prompt_text = str(messages)
-
-            response = self.llm.invoke(prompt_text)
+                response = self.llm.invoke(messages)
             out_text = response.content
 
             # Try parse JSON

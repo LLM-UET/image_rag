@@ -39,6 +39,8 @@ ENV/
 data/raw/*.pdf
 data/processed/*
 data/structured/*
+data/templates/*
+!data/templates/.gitkeep
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 !data/structured/.gitkeep
@@ -58,3 +60,4 @@ Thumbs.db
 # Logs
 *.log
 logs/
+/vectorstore
