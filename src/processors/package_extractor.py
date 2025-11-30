@@ -2,13 +2,19 @@
 Package Extractor - Specialized extractor for Telecom Package Information
 Extends StructuredDataExtractor with telco-specific prompts and models.
 """
+import sys
 import json
 import logging
+from pathlib import Path
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field
 from langchain_core.prompts import ChatPromptTemplate
 
-from structured_extractor import StructuredDataExtractor
+# Add paths for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
+from rag.structured_extractor import StructuredDataExtractor
 from config.settings import settings
 
 logging.basicConfig(level=logging.INFO)

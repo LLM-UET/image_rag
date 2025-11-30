@@ -14,13 +14,13 @@ src_dir = Path(__file__).resolve().parent
 sys.path.insert(0, str(project_root))
 sys.path.insert(0, str(src_dir))
 
-from pdf_processor import PDFProcessor
-from image_processor import ImageDescriptionGenerator
-from document_merger import DocumentMerger
-from vector_store import VectorStoreManager
-from structured_extractor import StructuredDataExtractor
-from rag_pipeline import MultimodalRAGPipeline, ConversationalRAG
-from content_manager import ContentManager
+from processors.pdf_processor import PDFProcessor
+from processors.image_processor import ImageDescriptionGenerator
+from processors.document_merger import DocumentMerger
+from rag.vector_store import VectorStoreManager
+from rag.structured_extractor import StructuredDataExtractor
+from rag.rag_pipeline import MultimodalRAGPipeline, ConversationalRAG
+from rag.content_manager import ContentManager
 from config.settings import settings, validate_api_keys
 
 logging.basicConfig(
