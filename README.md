@@ -25,7 +25,7 @@ A comprehensive Retrieval-Augmented Generation (RAG) system for processing PDF d
 ### Step 1: Clone or Navigate to the Project
 
 ```bash
-cd "/home/tuanjhg/Project/multimodal rag"
+cd "multimodal rag"
 ```
 
 ### Step 2: Create Virtual Environment (Recommended)
