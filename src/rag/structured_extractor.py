@@ -10,6 +10,9 @@ import pandas as pd
 
 from langchain_core.documents import Document
 from langchain_core.prompts import ChatPromptTemplate
+
+import sys
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from config.settings import settings
 
 # Prefer local LLM when configured; otherwise use ChatOpenAI
