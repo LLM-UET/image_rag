@@ -101,7 +101,37 @@ class TelecomDocumentService:
             Cleaned text content
         """
         suffix = file_path.suffix.lower()
-        
+
+        # If suffix is unknown (.bin), try to detect by reading magic bytes
+        if suffix == '.bin':
+            try:
+                with open(file_path, 'rb') as f:
+                    header = f.read(512)
+                logger.info(f"Inspecting .bin file: {file_path}, header={header[:16]!r}")
+                if header.startswith(b'%PDF'):
+                    logger.info(f"Detected PDF content in .bin file: {file_path}")
+                    return self._process_pdf(file_path)
+                # Try to decode as text
+                try:
+                    text = header.decode('utf-8')
+                    # Save renamed temp txt file and process as readable txt
+                    tmp_txt = Path(str(file_path) + '.txt')
+                    with open(tmp_txt, 'w', encoding='utf-8') as out:
+                        # Write full content
+                        with open(file_path, 'rb') as f:
+                            out.write(f.read().decode('utf-8', errors='ignore'))
+                    logger.info(f"Treating .bin as text file: {file_path}")
+                    return clean_readable_txt(str(tmp_txt))
+                except Exception as te:
+                    logger.warning(f"Failed to decode .bin as text: {te}")
+                    # Last resort: raise error
+                    raise ValueError(f"Unsupported file type: .bin (not PDF, not text)")
+            except ValueError:
+                raise
+            except Exception as e:
+                logger.warning(f"Failed to inspect .bin file: {e}")
+                raise ValueError(f"Unsupported file type: .bin (inspection failed: {e})")
+
         if suffix == '.pdf':
             return self._process_pdf(file_path)
         elif suffix == '.json':

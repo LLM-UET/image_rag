@@ -35,6 +35,18 @@ class Settings(BaseSettings):
     local_llm: bool = os.getenv("LOCAL_LLM", "false").lower() in ("1", "true", "yes")
     local_llm_model: str = os.getenv("LOCAL_LLM_MODEL", "google/flan-t5-base")
     
+    # RabbitMQ settings for S15 (File Importing AI Agent)
+    rabbitmq_host: str = os.getenv("RABBITMQ_HOST", "localhost")
+    rabbitmq_port: str = os.getenv("RABBITMQ_PORT", "5672")
+    rabbitmq_user: str = os.getenv("RABBITMQ_USER", "guest")
+    rabbitmq_pass: str = os.getenv("RABBITMQ_PASS", "guest")
+    file_import_request_queue: str = os.getenv("FILE_IMPORT_REQUEST_QUEUE", "file_import_requests")
+    
+    # SeaweedFS settings
+    seaweed_master: str = os.getenv("SEAWEED_MASTER", "http://localhost:9333")
+    # Optional volume URL override (e.g. http://localhost:8080)
+    seaweed_volume_url: Optional[str] = os.getenv("SEAWEED_VOLUME_URL", None)
+    
     project_root: Path = Path(__file__).parent.parent
     data_dir: Path = project_root / "data"
     raw_data_dir: Path = data_dir / "raw"

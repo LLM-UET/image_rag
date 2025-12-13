@@ -82,23 +82,14 @@ QUY TẮC CHUẨN HÓA DỮ LIỆU:
 4. Xử lý nhiều cột giá: Nếu bảng có cột "Giá 1 tháng", "Giá 7 tháng", "Giá 15 tháng" -> Tạo bản ghi cho gói cước cơ bản (1 tháng). Nếu cần thiết mới tạo thêm gói chu kỳ dài.
 
 OUTPUT FORMAT:
-Trả về JSON với cấu trúc:
-{
-  "packages": [
-    {
-      "package_name": "TÊN_GÓI",
-      "partner_name": "TÊN_ĐỐI_TÁC", 
-      "service_type": "LOẠI_DỊCH_VỤ",
-      "attributes": {
-        "price": số_nguyên_VND,
-        "billing_cycle": "chu_kỳ",
-        "payment_type": "prepaid|postpaid",
-        "speed": "tốc độ nếu có",
-        ...các trường khác
-      }
-    }
-  ]
-}
+Trả về một đối tượng JSON có khóa `packages` (mảng). Mỗi mục trong `packages` là một object với các trường chính:
+
+- `name`: tên/mã gói (string)
+- `partner_name`: tên nhà cung cấp (string)
+- `service_type`: loại dịch vụ (string)
+- `attributes`: object chứa các thuộc tính linh hoạt (ví dụ: `price`, `billing_cycle`, `payment_type`, `data_limit`, `channels`, `speed`, `promotion`, `bonus_codes`, `notes`, `voice_minutes`, `sms_count`).
+
+Không bao gồm các trường rỗng hoặc không tìm thấy trong `attributes`. Trả về CHỈ JSON (không có giải thích, không có markdown code block).
 
 LƯU Ý QUAN TRỌNG:
 - Trích xuất TẤT CẢ các gói, bao gồm cả các gói trong Phụ lục và Mô tả ảnh.

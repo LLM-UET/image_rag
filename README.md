@@ -124,6 +124,11 @@ EMBEDDING_MODEL=text-embedding-3-small
 LLM_MODEL=gpt-4o-mini
 VISION_MODEL=gemini-2.0-flash
 ```
+docker run -d --name seaweedfs `
+  -p 9333:9333 -p 8080:8080 `
+  -v D:\seaweed_data:/data `
+  chrislusf/seaweedfs:latest server -dir=/data -ip=0.0.0.0 -volume.port=8080 -master.port=9333
+```
 
 ## Workflow (tổng quan)
 

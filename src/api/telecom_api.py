@@ -9,13 +9,17 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 
+# === Adjust sys.path BEFORE any local imports ===
+_api_dir = Path(__file__).parent
+_src_dir = _api_dir.parent
+_project_root = _src_dir.parent
+sys.path.insert(0, str(_project_root))  # for config
+sys.path.insert(0, str(_src_dir))        # for core, processors, etc.
+# ================================================
+
 from fastapi import FastAPI, UploadFile, File, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-
-# Add parent directories for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))  # src/
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))  # project root (for config)
 
 from core.extractor import TelecomPackageExtractor
 from processors.pdf_processor import PDFProcessor
