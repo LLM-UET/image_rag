@@ -50,6 +50,7 @@ class FileImportingAgent:
         rabbitmq_user: str,
         rabbitmq_pass: str,
         request_queue: str,
+        response_queue: str,
         seaweed_master: str,
         model_name: str = "gpt-4o-mini"
     ):
@@ -58,6 +59,7 @@ class FileImportingAgent:
         self.rabbitmq_user = rabbitmq_user
         self.rabbitmq_pass = rabbitmq_pass
         self.request_queue = request_queue
+        self.response_queue = response_queue
         self.seaweed_master = seaweed_master
         self.model_name = model_name
         
@@ -89,6 +91,7 @@ class FileImportingAgent:
         
         # Declare request queue
         self.channel.queue_declare(queue=self.request_queue, durable=True)
+        self.channel.queue_declare(queue=self.response_queue, durable=True)
         
         logger.info(f"Connected to RabbitMQ at {self.rabbitmq_host}:{self.rabbitmq_port}")
     
@@ -321,8 +324,11 @@ class FileImportingAgent:
             # Send response back
             ch.basic_publish(
                 exchange='',
-                routing_key=props.reply_to,
-                properties=pika.BasicProperties(correlation_id=props.correlation_id),
+                routing_key=self.response_queue,
+                properties=pika.BasicProperties(
+                    # correlation_id=props.correlation_id
+                    delivery_mode=2  # make message persistent
+                ),
                 body=json.dumps(response, ensure_ascii=False)
             )
             
@@ -371,6 +377,7 @@ def main():
     rabbitmq_user = os.getenv('RABBITMQ_USER', 'guest')
     rabbitmq_pass = os.getenv('RABBITMQ_PASS', 'guest')
     request_queue = os.getenv('FILE_IMPORT_REQUEST_QUEUE', 'file_import_requests')
+    response_queue = os.getenv('FILE_IMPORT_RESPONSE_QUEUE', 'file_import_responses')
     seaweed_master = os.getenv('SEAWEED_MASTER', 'http://localhost:9333')
     model_name = os.getenv('LLM_MODEL', 'gpt-4o-mini')
     
@@ -385,6 +392,7 @@ def main():
         rabbitmq_user=rabbitmq_user,
         rabbitmq_pass=rabbitmq_pass,
         request_queue=request_queue,
+        response_queue=response_queue,
         seaweed_master=seaweed_master,
         model_name=model_name
     )
