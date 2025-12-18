@@ -36,7 +36,7 @@ class HealthResponse(BaseModel):
     status: str
     version: str
     timestamp: str
-    openai_configured: bool
+    gemini_configured: bool
 
 
 class PackageAttributes(BaseModel):
@@ -114,7 +114,7 @@ async def health_check():
         status="healthy",
         version="1.0.0",
         timestamp=datetime.now().isoformat(),
-        openai_configured=bool(settings.openai_api_key)
+        gemini_configured=bool(settings.gemini_api_key)
     )
 
 
@@ -122,7 +122,7 @@ async def health_check():
 async def extract_packages(
     file: UploadFile = File(..., description="PDF file to process"),
     use_upstage: bool = Query(True, description="Use Upstage API for image extraction"),
-    model: str = Query("gpt-4o-mini", description="LLM model for package extraction")
+    model: str = Query("gpt-3.5-turbo", description="LLM model for package extraction")
 ):
     """
     Process PDF and extract telecom packages.

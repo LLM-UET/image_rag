@@ -288,8 +288,8 @@ Examples:
     )
     parser.add_argument(
         '--model',
-        default='gpt-4o-mini',
-        help='LLM model for extraction (default: gpt-4o-mini)'
+        default='gpt-3.5-turbo',
+        help='LLM model for extraction (default: gpt-3.5-turbo)'
     )
     
     # Subcommands

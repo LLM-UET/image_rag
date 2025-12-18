@@ -10,7 +10,7 @@ import json
 import logging
 from typing import List, Optional
 
-from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
 
@@ -114,22 +114,22 @@ class TelecomPackageExtractor:
     Uses structured output to enforce Pydantic schema.
     """
     
-    def __init__(self, model_name: str = "gpt-4o-mini", use_strict_schema: bool = True):
+    def __init__(self, model_name: str = "gemini-2.0-flash-exp", use_strict_schema: bool = True):
         """
         Initialize the extractor with specified model.
         
         Args:
-            model_name: OpenAI model name (default: gpt-4o-mini)
-            use_strict_schema: Use strict schema for OpenAI structured output (default: True)
+            model_name: Gemini model name (default: gemini-2.0-flash-exp)
+            use_strict_schema: Use strict schema for structured output (default: True)
         """
         self.model_name = model_name
         self.use_strict_schema = use_strict_schema
         
         # Initialize LLM with structured output
-        self.llm = ChatOpenAI(
+        self.llm = ChatGoogleGenerativeAI(
             model=model_name,
             temperature=0,  # Deterministic output for extraction
-            api_key=settings.openai_api_key
+            google_api_key=settings.gemini_api_key
         )
         
         # Create prompt template
@@ -138,7 +138,7 @@ class TelecomPackageExtractor:
             ("human", HUMAN_PROMPT)
         ])
         
-        # Create chain with structured output - use strict schema for OpenAI compatibility
+        # Create chain with structured output - use strict schema for Gemini compatibility
         output_schema = PackageListOutputStrict if use_strict_schema else PackageListOutput
         self.structured_llm = self.llm.with_structured_output(output_schema)
         
@@ -267,7 +267,7 @@ class TelecomPackageExtractor:
 # CONVENIENCE FUNCTION
 # ============================================================================
 
-def extract_package_info(clean_text: str, model_name: str = "gpt-4o-mini") -> List[TelecomPackage]:
+def extract_package_info(clean_text: str, model_name: str = "gemini-2.0-flash-exp") -> List[TelecomPackage]:
     """
     Convenience function to extract packages from text.
     

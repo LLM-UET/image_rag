@@ -52,7 +52,7 @@ class FileImportingAgent:
         request_queue: str,
         response_queue: str,
         seaweed_master: str,
-        model_name: str = "gpt-4o-mini"
+        model_name: str = "gemini-2.0-flash-exp"
     ):
         self.rabbitmq_host = rabbitmq_host
         self.rabbitmq_port = rabbitmq_port
@@ -379,7 +379,7 @@ def main():
     request_queue = os.getenv('FILE_IMPORT_REQUEST_QUEUE', 'file_import_requests')
     response_queue = os.getenv('FILE_IMPORT_RESPONSE_QUEUE', 'file_import_responses')
     seaweed_master = os.getenv('SEAWEED_MASTER', 'http://localhost:9333')
-    model_name = os.getenv('LLM_MODEL', 'gpt-4o-mini')
+    model_name = os.getenv('LLM_MODEL', 'gemini-2.0-flash-exp')
     
     logger.info("Starting File Importing AI Agent (S15)")
     logger.info(f"RabbitMQ: {rabbitmq_host}:{rabbitmq_port}")

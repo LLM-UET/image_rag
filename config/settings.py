@@ -8,7 +8,7 @@ load_dotenv()
 
 
 class Settings(BaseSettings):
-    openai_api_key: str = os.getenv("OPENAI_API_KEY", "")
+    gemini_api_key: str = os.getenv("GEMINI_API_KEY", "")
     google_api_key: str = os.getenv("GOOGLE_API_KEY", "")
     upstage_api_key: str = os.getenv("UPSTAGE_API_KEY", "")
     groq_api_key: str = os.getenv("GROQ_API_KEY", "")
@@ -63,7 +63,7 @@ settings = Settings()
 
 def validate_api_keys():
     required_keys = {
-        "OpenAI": settings.openai_api_key,
+        "Gemini": settings.gemini_api_key,
         "Google": settings.google_api_key,
     }
     

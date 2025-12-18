@@ -42,10 +42,10 @@ if settings.local_llm:
 
             return Resp(content=text)
 
-    # expose LocalLLM class as ChatOpenAI replacement
-    ChatOpenAI = LocalLLM
+    # expose LocalLLM class as ChatGoogleGenerativeAI replacement
+    ChatGoogleGenerativeAI = LocalLLM
 else:
-    from langchain_openai import ChatOpenAI
+    from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import START, StateGraph
 
 logging.basicConfig(level=logging.INFO)
@@ -85,9 +85,9 @@ class MultimodalRAGPipeline:
         # If local LLM is enabled, force the configured local model name to avoid
         # attempting to download gated/remote models (e.g., gpt-4o).
         if settings.local_llm:
-            self.llm = ChatOpenAI(settings.local_llm_model)
+            self.llm = ChatGoogleGenerativeAI(settings.local_llm_model)
         else:
-            self.llm = ChatOpenAI(model=self.model_name)
+            self.llm = ChatGoogleGenerativeAI(model=self.model_name)
         
         # Create QA prompt
         self.qa_prompt = ChatPromptTemplate.from_messages([

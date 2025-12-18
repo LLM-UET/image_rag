@@ -15,7 +15,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from config.settings import settings
 
-# Prefer local LLM when configured; otherwise use ChatOpenAI
+# Prefer local LLM when configured; otherwise use ChatGoogleGenerativeAI
 if settings.local_llm:
     try:
         from transformers import pipeline
@@ -55,10 +55,10 @@ if settings.local_llm:
 
             return Resp(content=text)
 
-    # use LocalLLM class as replacement for ChatOpenAI
-    ChatOpenAI = LocalLLM
+    # use LocalLLM class as replacement for ChatGoogleGenerativeAI
+    ChatGoogleGenerativeAI = LocalLLM
 else:
-    from langchain_openai import ChatOpenAI
+    from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.output_parsers import JsonOutputParser
 from pydantic import BaseModel, Field
 
@@ -106,9 +106,9 @@ class StructuredDataExtractor:
         # If local LLM is enabled, force the configured local model name to avoid attempting
         # to load remote/private models (e.g., gpt-4o) from HuggingFace.
         if settings.local_llm:
-            self.llm = ChatOpenAI(settings.local_llm_model)
+            self.llm = ChatGoogleGenerativeAI(settings.local_llm_model)
         else:
-            self.llm = ChatOpenAI(model=self.model_name, temperature=0)
+            self.llm = ChatGoogleGenerativeAI(model=self.model_name, temperature=0)
         
         # Setup output parser
         self.parser = JsonOutputParser(pydantic_object=StructuredData)
@@ -223,7 +223,7 @@ Return as a JSON array of objects."""),
                     prompt_text = "\n\n".join([m.content for m in prompt_messages])
                     response = self.llm.invoke(prompt_text)
                 else:
-                    # For real ChatOpenAI, pass messages directly
+                    # For real ChatGoogleGenerativeAI, pass messages directly
                     response = self.llm.invoke(prompt_messages)
                 out_text = response.content
 

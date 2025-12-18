@@ -14,9 +14,9 @@ try:
 except Exception:
     SentenceTransformer = None
 try:
-    from langchain_openai import OpenAIEmbeddings
+    from langchain_google_genai import GoogleGenerativeAIEmbeddings
 except Exception:
-    OpenAIEmbeddings = None
+    GoogleGenerativeAIEmbeddings = None
 
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -51,7 +51,7 @@ class VectorStoreManager:
         if settings.local_embeddings:
             if SentenceTransformer is None:
                 raise RuntimeError(
-                    "sentence-transformers is not installed. Install it or set LOCAL_EMBEDDINGS=false to use OpenAI."
+                    "sentence-transformers is not installed. Install it or set LOCAL_EMBEDDINGS=false to use Gemini."
                 )
 
             class LocalEmbeddings:
@@ -70,10 +70,10 @@ class VectorStoreManager:
             logger.info("Using local sentence-transformers embeddings (all-MiniLM-L6-v2)")
             self.embeddings = LocalEmbeddings(model_name="all-MiniLM-L6-v2")
         else:
-            if OpenAIEmbeddings is None:
-                raise RuntimeError("langchain_openai is not installed; install it or set LOCAL_EMBEDDINGS=true to use local embeddings.")
-            # Use OpenAI embeddings by default
-            self.embeddings = OpenAIEmbeddings(model=self.embedding_model_name)
+            if GoogleGenerativeAIEmbeddings is None:
+                raise RuntimeError("langchain_google_genai is not installed; install it or set LOCAL_EMBEDDINGS=true to use local embeddings.")
+            # Use Gemini embeddings by default
+            self.embeddings = GoogleGenerativeAIEmbeddings(model=self.embedding_model_name)
         
         # Initialize vector store (will be created when documents are added)
         self.vector_store = None

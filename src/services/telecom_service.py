@@ -33,7 +33,7 @@ class TelecomDocumentService:
     Orchestrates: PDF → Upstage OCR → Data Cleaning → LLM Extraction → Structured Data
     """
     
-    def __init__(self, model_name: str = "gpt-4o-mini"):
+    def __init__(self, model_name: str = "gemini-2.0-flash-exp"):
         """
         Initialize the document service.
         
@@ -245,7 +245,7 @@ class TelecomDocumentService:
 # CONVENIENCE FUNCTION
 # ============================================================================
 
-def process_document(file_path: str, model_name: str = "gpt-4o-mini") -> List[Dict[str, Any]]:
+def process_document(file_path: str, model_name: str = "gemini-2.0-flash-exp") -> List[Dict[str, Any]]:
     """
     Convenience function to process a document.
     
@@ -262,7 +262,7 @@ def process_document(file_path: str, model_name: str = "gpt-4o-mini") -> List[Di
 
 def process_multiple_documents(
     file_paths: List[str], 
-    model_name: str = "gpt-4o-mini"
+    model_name: str = "gemini-2.0-flash-exp"
 ) -> List[Dict[str, Any]]:
     """
     Process multiple documents and combine results.
