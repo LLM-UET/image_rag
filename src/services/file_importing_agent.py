@@ -14,6 +14,7 @@ import os
 import sys
 import tempfile
 import requests
+import uuid
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, Optional
@@ -33,6 +34,48 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+
+def transform_package_to_api_format(pkg: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Transform package from internal format to telecom_api format.
+    
+    Internal format:
+        {
+            "ma_dich_vu": "VCine",
+            "attributes": {
+                "Thời gian thanh toán": "Trả trước",
+                "Giá (VNĐ)": 20000,
+                ...
+            }
+        }
+    
+    API format:
+        {
+            "Mã dịch vụ": "VCine",
+            "Thời gian thanh toán": "Trả trước",
+            "Giá (VNĐ)": 20000,
+            ...
+        }
+    """
+    result = {}
+    
+    # Add service code
+    if 'ma_dich_vu' in pkg:
+        result['Mã dịch vụ'] = pkg['ma_dich_vu']
+    elif 'Mã dịch vụ' in pkg:
+        result['Mã dịch vụ'] = pkg['Mã dịch vụ']
+    
+    # Flatten attributes into top level
+    if 'attributes' in pkg and isinstance(pkg['attributes'], dict):
+        result.update(pkg['attributes'])
+    
+    # Add any other top-level fields that aren't ma_dich_vu or attributes
+    for key, value in pkg.items():
+        if key not in ['ma_dich_vu', 'attributes', 'Mã dịch vụ']:
+            result[key] = value
+    
+    return result
 
 
 class FileImportingAgent:
@@ -226,25 +269,27 @@ class FileImportingAgent:
             # Extract packages using telecom service
             packages = self.extraction_service.process_document(file_path)
             
+            # Transform packages to API format (flatten attributes)
+            transformed_packages = [transform_package_to_api_format(pkg) for pkg in packages]
+            
             warnings = []
             # Add warnings for missing fields
-            for i, pkg in enumerate(packages, 1):
-                if not pkg.get('name'):
-                    warnings.append(f"Package {i}: missing name")
-                if not pkg.get('partner_name'):
-                    warnings.append(f"Package {i}: missing partner_name")
+            for i, pkg in enumerate(transformed_packages, 1):
+                if not pkg.get('Mã dịch vụ'):
+                    warnings.append(f"Package {i}: missing Mã dịch vụ")
             
             result = {
                 "status": "success",
                 "content": {
-                    "processed_at": datetime.utcnow().isoformat() + "Z",
-                    "packages": packages,
-                    "warnings": warnings,
-                    "extracted_count": len(packages)
+                    "id": str(uuid.uuid4())[:8],
+                    "extraction_date": datetime.utcnow().isoformat(),
+                    "total_packages": len(transformed_packages),
+                    "packages": transformed_packages,
+                    "warnings": warnings
                 }
             }
             
-            logger.info(f"Extraction successful: {len(packages)} packages")
+            logger.info(f"Extraction successful: {len(transformed_packages)} packages")
             return result
             
         except Exception as e:
@@ -253,7 +298,7 @@ class FileImportingAgent:
                 "status": "error",
                 "content": {
                     "error": str(e),
-                    "processed_at": datetime.utcnow().isoformat() + "Z"
+                    "extraction_date": datetime.utcnow().isoformat()
                 }
             }
     
