@@ -62,32 +62,36 @@ QUY TẮC XÁC ĐỊNH SERVICE_TYPE (Loại dịch vụ):
 QUY TẮC MAPPING CỘT BẢNG → ATTRIBUTES:
 | Tên cột tiếng Việt | Tên field trong attributes |
 |-------------------|---------------------------|
-| Đơn giá / Giá / Cước phí | price |
-| Chu kỳ gói cước / Thời hạn | billing_cycle |
-| Số mã dự thưởng | bonus_codes |
-| Ghi chú | notes |
-| Lưu lượng / Data | data_limit |
-| Tốc độ (trong nước) | speed |
-| Tốc độ quốc tế (tối đa/cam kết) | international_speed |
-| Số kênh | channels |
-| Phút gọi | voice_minutes |
-| SMS | sms_count |
+| Đơn giá / Giá / Cước phí | giá |
+| Chu kỳ gói cước / Thời hạn | thời hạn |
+| Lưu lượng / Data | data |
 
 QUY TẮC CHUẨN HÓA DỮ LIỆU:
-1. price: Chuyển thành số nguyên (VND), bỏ dấu chấm/phẩy ngăn cách hàng nghìn. Lấy giá trị cho 1 tháng nếu có nhiều cột giá.
+1. giá: Chuyển thành số nguyên (VND), bỏ dấu chấm/phẩy ngăn cách hàng nghìn. Lấy giá trị cho 1 tháng nếu có nhiều cột giá.
    - "80.000" → 80000
    - "1.570.000" → 1570000
-2. billing_cycle: Giữ nguyên định dạng tiếng Việt ("1 tháng", "6 tháng"...).
-3. payment_type: Xác định từ ngữ cảnh ("prepaid" hoặc "postpaid").
+2.thời hạn: Giữ nguyên định dạng tiếng Việt ("1 tháng", "6 tháng"...).
+3.phương thức trả: Xác định từ ngữ cảnh ("prepaid" hoặc "postpaid").
 4. Xử lý nhiều cột giá: Nếu bảng có cột "Giá 1 tháng", "Giá 7 tháng", "Giá 15 tháng" -> Tạo bản ghi cho gói cước cơ bản (1 tháng). Nếu cần thiết mới tạo thêm gói chu kỳ dài.
 
 OUTPUT FORMAT:
 Trả về một đối tượng JSON có khóa `packages` (mảng). Mỗi mục trong `packages` là một object với các trường chính:
 
-- `name`: tên/mã gói (string)
-- `partner_name`: tên nhà cung cấp (string)
-- `service_type`: loại dịch vụ (string)
-- `attributes`: object chứa các thuộc tính linh hoạt (ví dụ: `price`, `billing_cycle`, `payment_type`, `data_limit`, `channels`, `speed`, `promotion`, `bonus_codes`, `notes`, `voice_minutes`, `sms_count`).
+- `mã dịch vụ`: tên/mã gói (string)
+- `attributes`: object chứa các thuộc tính linh hoạt (ví dụ: Thời gian thanh toán: Thường có hai giá trị "Trả trước" hoặc "Trả sau".
+- Các dịch vụ tiên quyết: Các dịch vụ cần có trước khi đăng ký gói cước này, có thể để trống.
+- Giá (VNĐ): Giá của gói cước trong một chu kỳ, tính theo đồng Việt Nam.
+- Chu kỳ (ngày): Thời gian hiệu lực của gói cước tính theo ngày. Hết chu kỳ sẽ phải gia hạn để tiếp tục sử dụng.
+- 4G tốc độ tiêu chuẩn/ngày: Dung lượng dữ liệu 4G tốc độ tiêu chuẩn mà người dùng nhận được mỗi ngày, được biểu hiện bằng số GB. Nếu sử dụng hết sẽ bị giảm tốc độ.
+- 4G tốc độ cao/ngày
+- 4G tốc độ tiêu chuẩn/chu kỳ
+- 4G tốc độ cao/chu kỳ
+- Gọi nội mạng: Chi tiết ưu đãi gọi nội mạng trong chu kỳ, ví dụ "Miễn phí 30 phút gọi"
+- Gọi ngoại mạng
+- Tin nhắn: Chi tiết ưu đãi tin nhắn trong chu kỳ.
+- Chi tiết: Mô tả thêm về gói cước, bao gồm các ưu đãi, điều kiện sử dụng, giới hạn...
+- Tự động gia hạn: Cho biết gói cước có tự động gia hạn sau khi hết chu kỳ hay không. Nhận giá trị "Có" hoặc "Không".
+- Cú pháp đăng ký: Hướng dẫn cú pháp SMS hoặc thao tác để đăng ký gói cước.).
 
 Không bao gồm các trường rỗng hoặc không tìm thấy trong `attributes`. Trả về CHỈ JSON (không có giải thích, không có markdown code block).
 

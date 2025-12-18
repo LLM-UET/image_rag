@@ -13,39 +13,44 @@ from datetime import datetime
 class PackageAttributes(BaseModel):
     """
     Structured attributes for telecom packages.
-    Uses explicit fields instead of Dict[str, Any] for OpenAI structured output compatibility.
+    Matches PACKAGE_FIELDS schema for consistency.
     """
-    price: Optional[int] = Field(default=None, description="Package price in VND")
-    billing_cycle: Optional[str] = Field(default=None, description="Subscription period (e.g., '1 tháng', '6 tháng')")
-    payment_type: Optional[str] = Field(default=None, description="'prepaid'/'trả trước' or 'postpaid'/'trả sau'")
-    data_limit: Optional[str] = Field(default=None, description="Data allowance if applicable")
-    channels: Optional[int] = Field(default=None, description="Number of TV channels if applicable")
-    speed: Optional[str] = Field(default=None, description="Internet speed if applicable")
-    promotion: Optional[str] = Field(default=None, description="Any promotional details")
-    bonus_codes: Optional[int] = Field(default=None, description="Number of bonus/lottery codes if applicable")
-    notes: Optional[str] = Field(default=None, description="Additional notes or special conditions")
-    voice_minutes: Optional[str] = Field(default=None, description="Voice call minutes if applicable")
-    sms_count: Optional[int] = Field(default=None, description="SMS count if applicable")
+    nha_mang: Optional[str] = Field(default=None, alias="Nhà mạng", description="Tên nhà mạng cung cấp gói cước")
+    thoi_gian_thanh_toan: Optional[str] = Field(default=None, alias="Thời gian thanh toán", description="Hình thức thanh toán: 'Trả trước' hoặc 'Trả sau'")
+    cac_dich_vu_tien_quyet: Optional[str] = Field(default=None, alias="Các dịch vụ tiên quyết", description="Các dịch vụ cần có trước khi đăng ký gói")
+    gia_vnd: Optional[int] = Field(default=None, alias="Giá (VNĐ)", description="Giá của gói cước trong một chu kỳ (VNĐ)")
+    chu_ky_ngay: Optional[int] = Field(default=None, alias="Chu kỳ (ngày)", description="Thời gian hiệu lực của gói cước (ngày)")
+    data_4g_tieu_chuan_ngay: Optional[str] = Field(default=None, alias="4G tốc độ tiêu chuẩn/ngày", description="Dung lượng 4G tốc độ tiêu chuẩn mỗi ngày")
+    data_4g_cao_ngay: Optional[str] = Field(default=None, alias="4G tốc độ cao/ngày", description="Dung lượng 4G tốc độ cao mỗi ngày")
+    data_4g_tieu_chuan_chu_ky: Optional[str] = Field(default=None, alias="4G tốc độ tiêu chuẩn/chu kỳ", description="Dung lượng 4G tốc độ tiêu chuẩn cho cả chu kỳ")
+    data_4g_cao_chu_ky: Optional[str] = Field(default=None, alias="4G tốc độ cao/chu kỳ", description="Dung lượng 4G tốc độ cao cho cả chu kỳ")
+    goi_noi_mang: Optional[str] = Field(default=None, alias="Gọi nội mạng", description="Chi tiết ưu đãi gọi nội mạng")
+    goi_ngoai_mang: Optional[str] = Field(default=None, alias="Gọi ngoại mạng", description="Chi tiết ưu đãi gọi ngoại mạng")
+    tin_nhan: Optional[str] = Field(default=None, alias="Tin nhắn", description="Chi tiết ưu đãi tin nhắn")
+    chi_tiet: Optional[str] = Field(default=None, alias="Chi tiết", description="Mô tả thêm về gói cước")
+    tu_dong_gia_han: Optional[str] = Field(default=None, alias="Tự động gia hạn", description="Có tự động gia hạn hay không: 'Có' hoặc 'Không'")
+    cu_phap_dang_ky: Optional[str] = Field(default=None, alias="Cú pháp đăng ký", description="Hướng dẫn cú pháp SMS để đăng ký gói")
+    
+    class Config:
+        populate_by_name = True
 
 
 class TelecomPackageStrict(BaseModel):
     """
-    Strict telecom package structure for OpenAI structured output.
-    Uses PackageAttributes instead of Dict for schema compatibility.
+    Strict telecom package structure for Gemini structured output.
+    Only contains service code (Mã dịch vụ) and attributes.
     """
-    name: str = Field(
-        description="Name/code of the package (e.g., 'VIP', 'STANDARD', 'VSport', 'GALAXY')"
-    )
-    partner_name: str = Field(
-        description="Telecom partner or service provider (e.g., 'TV360', 'VNPT', 'Viettel', 'Mobifone')"
-    )
-    service_type: str = Field(
-        description="Type of service (e.g., 'Television', 'Internet', 'Mobile', 'Combo', 'Camera')"
+    ma_dich_vu: str = Field(
+        alias="Mã dịch vụ",
+        description="Mã định danh duy nhất của gói cước (e.g., 'SD70', 'VIP', 'STANDARD')"
     )
     attributes: PackageAttributes = Field(
         default_factory=PackageAttributes,
-        description="Package attributes like price, billing cycle, etc."
+        description="Package attributes containing all other fields"
     )
+    
+    class Config:
+        populate_by_name = True
 
 
 class TelecomPackage(BaseModel):
@@ -56,14 +61,10 @@ class TelecomPackage(BaseModel):
     stored in a flexible dictionary structure to accommodate various
     package types (data, voice, TV, combo, etc.)
     """
-    name: str = Field(
+    ma_dich_vu: str = Field(
+        ...,
+        alias="Mã dịch vụ",
         description="Name/code of the package (e.g., 'VIP', 'STANDARD', 'VSport', 'GALAXY')"
-    )
-    partner_name: str = Field(
-        description="Telecom partner or service provider (e.g., 'TV360', 'VNPT', 'Viettel', 'Mobifone')"
-    )
-    service_type: str = Field(
-        description="Type of service (e.g., 'Television', 'Internet', 'Mobile', 'Combo', 'Camera')"
     )
     attributes: Dict[str, Any] = Field(
         default_factory=dict,
@@ -83,20 +84,21 @@ class TelecomPackage(BaseModel):
     @classmethod
     def from_strict(cls, strict_pkg: TelecomPackageStrict) -> "TelecomPackage":
         """Convert from strict schema to flexible schema."""
-        attrs = strict_pkg.attributes.model_dump(exclude_none=True)
+        attrs = strict_pkg.attributes.model_dump(exclude_none=True, by_alias=True)
+        
+        # Extract fields that were moved to attributes
+        name = strict_pkg.ma_dich_vu
+        
         return cls(
-            name=strict_pkg.name,
-            partner_name=strict_pkg.partner_name,
-            service_type=strict_pkg.service_type,
+            ma_dich_vu=name,
             attributes=attrs
         )
     
     class Config:
+        populate_by_name = True
         json_schema_extra = {
             "example": {
-                "name": "VIP",
-                "partner_name": "TV360",
-                "service_type": "Television",
+                "ma_dich_vu": "VIP",
                 "attributes": {
                     "price": 80000,
                     "billing_cycle": "1 tháng",

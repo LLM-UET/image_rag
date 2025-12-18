@@ -19,7 +19,7 @@ sys.path.insert(0, str(_src_dir))        # for core, processors, etc.
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 from core.extractor import TelecomPackageExtractor
 from processors.pdf_processor import PDFProcessor
@@ -53,16 +53,19 @@ class PackageAttributes(BaseModel):
     promotion: Optional[str] = None
     notes: Optional[str] = None
     
-    class Config:
-        extra = "allow"
+    model_config = ConfigDict(extra="allow")
 
 
 class TelecomPackage(BaseModel):
-    """Telecom package."""
-    name: str
-    partner_name: str
-    service_type: str
-    attributes: Dict[str, Any] = Field(default_factory=dict)
+    """Telecom package: internal field `name`, serialized as `Mã dịch vụ`."""
+    name: str = Field(..., alias="Mã dịch vụ")
+        
+    model_config = ConfigDict(
+        extra="allow",
+        populate_by_name=True,
+        # Always use alias when serializing to JSON
+        use_alias_by_default=True
+    )
 
 
 class ExtractionResponse(BaseModel):
@@ -118,11 +121,11 @@ async def health_check():
     )
 
 
-@app.post("/api/v1/extract", response_model=ExtractionResponse, tags=["Extraction"])
+@app.post("/api/v1/extract", response_model=ExtractionResponse, response_model_by_alias=True, tags=["Extraction"])
 async def extract_packages(
     file: UploadFile = File(..., description="PDF file to process"),
     use_upstage: bool = Query(True, description="Use Upstage API for image extraction"),
-    model: str = Query("gpt-3.5-turbo", description="LLM model for package extraction")
+    model: str = Query(settings.llm_model, description="LLM model (Gemini) for package extraction")
 ):
     """
     Process PDF and extract telecom packages.
@@ -182,16 +185,51 @@ async def extract_packages(
             extractor = TelecomPackageExtractor(model_name=model)
             packages = extractor.extract_package_info(readable_text)
             
-            # Convert to dict format
+            # Convert to dict format (support new TelecomPackage schema: ma_dich_vu + attributes)
             packages_list = []
-            for pkg in packages:
-                pkg_dict = {
-                    "name": getattr(pkg, 'name', getattr(pkg, 'package_name', None)),
-                    "partner_name": pkg.partner_name,
-                    "service_type": pkg.service_type,
-                    "attributes": pkg.attributes if isinstance(pkg.attributes, dict) else pkg.attributes.model_dump() if hasattr(pkg.attributes, 'model_dump') else {}
+            for idx, pkg in enumerate(packages, 1):
+                # Service identifier: prefer `ma_dich_vu`, fall back to `name` or `package_name`
+                service_id = getattr(pkg, 'ma_dich_vu', None) or getattr(pkg, 'name', None) or getattr(pkg, 'package_name', None)
+
+                # Normalize attributes: support dict or Pydantic model
+                if isinstance(pkg.attributes, dict):
+                    attrs = pkg.attributes
+                elif hasattr(pkg.attributes, 'model_dump'):
+                    # prefer by_alias so aliases like 'Nhà mạng' are preserved
+                    try:
+                        attrs = pkg.attributes.model_dump(exclude_none=True, by_alias=True)
+                    except TypeError:
+                        attrs = pkg.attributes.model_dump(exclude_none=True)
+                else:
+                    attrs = {}
+
+                # Try to extract service_id from attributes if top-level extraction failed
+                if not service_id or service_id.strip() == "":
+                    if isinstance(attrs, dict):
+                        service_id = attrs.get('Mã dịch vụ') or attrs.get('ma_dich_vu') or attrs.get('package_name')
+                
+                # Final fallback: generate auto ID
+                if not service_id or service_id.strip() == "":
+                    service_id = f"PACKAGE_{idx:03d}"
+                    logger.warning(f"[{request_id}] Package {idx} missing service ID, using auto-generated: {service_id}")
+
+                # Do not include 'Nhà mạng' or 'Loại dịch vụ' in output; promote other attributes
+                pkg_flat: Dict[str, Any] = {
+                    "name": service_id,
                 }
-                packages_list.append(pkg_dict)
+
+                # Promote attribute keys to top-level, skipping keys already present
+                if isinstance(attrs, dict):
+                    for k, v in attrs.items():
+                        # skip keys that duplicate primary fields
+                        if k in ("name", "partner_name", "service_type", "attributes", "Mã dịch vụ", "ma_dich_vu", "Nhà mạng", "Loại dịch vụ"):
+                            continue
+                        # if key already exists at top-level, do not overwrite
+                        if k in pkg_flat and pkg_flat[k] is not None:
+                            continue
+                        pkg_flat[k] = v
+
+                packages_list.append(pkg_flat)
             
             elapsed_ms = (datetime.now() - start_time).total_seconds() * 1000
             logger.info(f"[{request_id}] Extracted {len(packages_list)} packages in {elapsed_ms:.0f}ms")
